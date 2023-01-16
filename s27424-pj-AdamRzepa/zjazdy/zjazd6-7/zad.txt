@@ -1,0 +1,102 @@
+Set-ExecutionPolicy Bypass
+Zmienia zasady wykonywania programu PowerShell dla komputerów z systemem Window
+
+Get-Help 
+Pozwala nam zobaczyc zobaczyć jaką składnie ma polecenie np:
+Get-Help Get-ExecutionPolicy
+
+A żeby zobaczyć przykłady użycia polenenia:
+Get-Help Get-ExecutionPolicy -Examples
+
+Komendy w PS (powershellu) mają pewną stałą konwencję nazewniczą. Jest to: Czasownik-NaCzymMaOperować
+
+"Where-Object" lub jego skrótu "?"
+Pozwala wyszukiwać przykładowo w modułach np:
+Get-Module -ListAvailable | ? {$_.Version -ge "2.0.0.0"}
+
+Tak jak "?" jest skrótem na Where-Object, tak "%" jest skrótem na While-Object czyli pętlę
+np: Get-Module -ListAvailable | ? {$_.Version -ge "2.0.0.0"} | % {Get-Command -Module $_.Name}
+
+
+Out-GridView
+Pozwala nam wyświetlać moduły w postaci graficznej
+
+Out-File pozwala nam wydać wynik do pliku np:
+Get-Module -ListAvailable | ? {$_.Version -ge "2.0.0.0"} | % {Get-Command -Module $_.Name} | ? {($_.Name -like "Add-*") -or ($_.Name -like "Get-*")} | Out-File $env:TEMP\$nazwaPliku
+
+Out-Null
+Przetwarza zadanie ale nic z tym nie robi
+
+Moduł Bitstransfer pozwala nam pobierać pliki z internetu np:
+Start-BitsTransfer -Source http://zstwodzislaw.net/userfiles/file/file2022/regulamin_rekrutacji_2022_2023.pdf -Destination D:\
+Pobierze nam plik z tej strony i umiesci go na dysku D
+
+Można utworzyć też te zadanie w tle żeby nie zajmowało konsoli:
+$job = Start-BitsTransfer -Source http://zstwodzislaw.net/userfiles/file/file2022/regulamin_rekrutacji_2022_2023.pdf -Destination D:\  -Asynchronous -DisplayName "Moj Bits Transfer"
+
+By zobaczyć jaki jest stan transferu można użyć takiej komendy.
+Get-BitsTransfer
+
+Jeśli będzie tam Transferred to aby ukończyć całość i dostać pobierany plik
+trzeba jeszcze zakończyć job transferu. Robi się to tak:
+Complete-BitsTransfer -BitsJob $job
+
+Do mierzenia czasu komendy możemy użyć: Measure-Command np:
+Measure-Command {tart-BitsTransfer -Source http://zstwodzislaw.net/userfiles/file/file2022/regulamin_rekrutacji_2022_2023.pdf -Destination D:\}
+
+Polecenie: Get-Alias | ? {$_.Definition -like "Get-ChildItem"}
+Pokazuję nam aliasy polecenia np:dir, ls,gci
+
+Tak jak w bashu w ps można uruchamiać inne programy za poomocą znaku & np:
+& C:\Windows\notepad.exe
+
+
+Ale skoro o tym mowa to sprawdźmy jakie dyski są dostępne w PowerShell-u oraz rejestr.
+Get-PSDrive
+Dyski HKML i HKCU to dyski dające dostęp do rejestru.
+
+Poza tym są jeszcze:
+- Alias - lista wszystkich zdefiniowanych aliasów w bierzącej sesji. Tam są m.in. ls, dir, ?, %
+- Cert - magazyn certyfikatów TLS/SSL stosowanych do szyfrowania danych. Głównie połączeń sieciowych ale też i emaili czy podpisywania danych by można było sprawdzić czy treść np. dokumentu nie została zmodyfikowana. Swoją drogą skrypty PowerShell-owe też można podpisać cyfrowo
+- Env - zmienne środowiskowe w bierzącej sesji.
+- Function - tu są wszystkie zdefiniowane w bierzącej sesji funkcje, które można uruchomić. 
+- Variable - zmienne utworzone i dostępne w bierzącej sesji. NIE SĄ to zmienne środowiskowe tylko takie zmienne lokalne.
+- WSMan - dostęp do całego systemu WMI. Czyli to co powyżej było robione poprzez Get-WmiObject można by było spróbować pobrać z tego dysku
+
+ Poza tymi dyskami są jeszcze inne, które można sobie dodać/dograć np:
+- GH - GitHub - tak, można po githubie "chodzić" w PowerShell-u
+- AD - ActiveDirectory - dodaje dysk dający dostęp do ActiveDirectory
+		Dla tych co wiedzą co to jest to otwiera nowe możliwości.
+		Dla tych co nie wiedzą jest kolejnym dyskiem.
+Takie dyski dodaje się przez załadowanie specjalnych modułów, które takie dyski udostępniają.
+
+Funkcje można równbież tworzyć w powershellu np:
+function GiveMePopup {
+    param(
+        [Parameter(Mandatory=$true)]
+        $Text,
+   
+        [Parameter(Mandatory=$true)]
+        $Title,
+   
+        [ValidateSet('None', 'Info', 'Warning', 'Error')]
+        $Icon = 'Info',
+
+        $Timeout = 10000
+    )
+    [void] [System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms")
+    $icoPath = Get-Process -id $pid | Select-Object -ExpandProperty Path
+    $myNotification = New-Object System.Windows.Forms.NotifyIcon
+    $myNotification.Icon = [System.Drawing.Icon]::ExtractAssociatedIcon($icoPath)
+    $myNotification.BalloonTipIcon = $Icon
+    $myNotification.BalloonTipText = $Text 
+    $myNotification.BalloonTipTitle = $Title
+    $myNotification.Visible = $True 
+    $myNotification.ShowBalloonTip(1000)
+}
+
+Można ją póxniej wywołać za pomocą jej nazwy GiveMePopup i możemy wpisać parametry teskt oraz tytuł
+Możemy również zrobić pętlę:
+For($i = 1; $i -le 10; $i++) {
+    GiveMePopup -Text "WTF-second passed!" -Title "WTF Notification" -Icon Info
+}
